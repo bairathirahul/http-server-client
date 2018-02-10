@@ -1,2 +1,9 @@
 .idea/
 *.iml
+/HTTPException.class
+/HTTPRequest.class
+/HTTPResponse.class
+/HTTPServer.class
+/HTTPClient.class
+/FtServerThread.class
+/HTTPServerThread.class
