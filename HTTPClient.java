@@ -1,98 +1,76 @@
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.io.*;
 import java.net.Socket;
-import java.util.ArrayList;
+import java.util.Arrays;
 
 public class HTTPClient {
-	public static void main(String[] args) throws IOException
-	{
-		Socket clientSocket = null;
-		FileInputStream inputFile = null;
-		if(args.length<1)
-		{
-			System.err.println("Enter Server Port Number");
-			System.exit(1);
-		}
-		String hostName = args[0];
-		int port = Integer.parseInt(args[1]);
-		String command = args[2];
-		String fileName = args[3];
-		System.out.println("Host Name: "+args[0]);
-		System.out.println("Port Number:  "+args[1]);
-		System.out.println("Command: "+args[2]);
-		System.out.println("File Name: "+args[3]);
-		int i=0;
-		ArrayList<String> listLines = new ArrayList<String>();
-		try {
-			clientSocket = new Socket(hostName, port);
-			BufferedReader br = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-			PrintWriter pw = new PrintWriter(clientSocket.getOutputStream(), true);
-			String message = "";
-			
-			if(command.equals("GET"))
-			{
-				pw.println("GET" + fileName + " HTTP/1.1");
-				pw.println("Host: "+hostName);
-				pw.println("Connection status: open");
-			
-				while(true)
-				{
-					message = br.readLine();
-					if(message == null)
-						break;
-					listLines.add(message);
-					System.out.println(message);
-				}
-			}
-			else if(command.equals("PUT"))
-			{
-				if(new File(fileName).isFile())
-				{
-					pw.println("PUT " + fileName + " HTTP/1.1");
-					pw.println("Host: " + hostName);
-					pw.println("Connection Status: open");
-					
-					System.out.println("File is: " + fileName);
-					File fileInput = new File(fileName);
-					inputFile = new FileInputStream(fileInput);
-					
-					do {
-						i = inputFile.read();
-						if(i != -1)
-						{
-							message += Character.toString((char) i);
-							pw.println(i);
-						}
-					}while(i != -1);
-						if(i == -1)
-						{
-							pw.println("-1");
-						}
-						System.out.println(br.readLine());
-				}
-				else
-				{
-					System.out.println("File doesn't exists, please enter a valid file");
-				}
-			}
-		}catch(IOException e)
-		{
-			System.out.println(e);
-		}
-		finally
-		{
-			if(clientSocket != null)
-			{
-				clientSocket.close();
-			}
-		}
-		
-	}
-	
-	
-	
+    public static void main(String[] args) {
+        if (args.length < 1) {
+            System.err.println("Enter Server Port Number");
+            System.exit(1);
+        }
+
+        String hostName = args[0];
+        int port = Integer.parseInt(args[1]);
+        String command = args[2];
+        String fileName = args[3];
+
+        Socket clientSocket = null;
+        DataOutputStream outputStream = null;
+        BufferedReader bufferedReader = null;
+        try {
+            clientSocket = new Socket(hostName, port);
+            outputStream = new DataOutputStream(clientSocket.getOutputStream());
+            bufferedReader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+
+            // Write request
+            String request = command + " " + fileName + " HTTP/1.1\r\n";
+            outputStream.write(request.getBytes());
+
+            if (command.equals("PUT")) {
+                long fileLength = (new File(fileName)).length();
+                String header = "Content-Length: " + fileLength + "\r\n";
+                outputStream.write(header.getBytes());
+
+                String spacer = "\r\n";
+                outputStream.write(spacer.getBytes());
+
+                FileInputStream fileInputStream = new FileInputStream(fileName);
+                int readLength;
+                byte[] buffer = new byte[1024];
+                while ((readLength = fileInputStream.read(buffer)) != -1) {
+                    outputStream.write(buffer, 0, readLength);
+                }
+            } else {
+                String spacer = "\r\n";
+                outputStream.write(spacer.getBytes());
+            }
+            outputStream.flush();
+
+            int readLength;
+            char[] buffer = new char[1024];
+            while ((readLength = bufferedReader.read(buffer)) != -1) {
+                System.out.println(Arrays.copyOfRange(buffer, 0, readLength));
+            }
+        } catch (FileNotFoundException e) {
+            System.out.println("File " + fileName + " not found");
+            e.printStackTrace();
+        } catch (IOException e) {
+            System.out.println("Unexpected error. See the stack trace below for details");
+            e.printStackTrace();
+        } finally {
+            try {
+                if (outputStream != null) {
+                    outputStream.close();
+                }
+                if (bufferedReader != null) {
+                    bufferedReader.close();
+                }
+                if (clientSocket != null) {
+                    clientSocket.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
 }
